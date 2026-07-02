@@ -1,6 +1,6 @@
 # Perlmutter Container
 
-This directory contains the Perlmutter-specific GB-25 container workflow. The fork
+This directory contains the Perlmutter-specific GB-25 container workflow. The
 root `Project.toml` remains the package definition. The lockfile here,
 `container-perlmutter/Manifest.toml`, is intentionally image-specific because it is
 resolved for the container Julia/CUDA/Reactant stack.
@@ -14,9 +14,8 @@ reflected in the Perlmutter image:
 container-perlmutter/update-manifest.sh
 ```
 
-The script resolves the fork root `Project.toml` in a temporary project and
-writes the resulting lockfile back to `container-perlmutter/Manifest.toml`. It does
-not create or update a root `Manifest.toml`.
+The script resolves the root `Project.toml` in a temporary project and
+writes the resulting lockfile back to `container-perlmutter/Manifest.toml`.
 
 ## Build Images
 
@@ -32,8 +31,6 @@ IMAGE=localhost/gb25-perlmutter:cuda12
 
 The build uses the newest NERSC GPU base image found on Docker Hub,
 `docker.io/nersc/base_gpu:26.06` (CUDA 12.9.1, NCCL 2.27.3, MPICH 5.0.1).
-The older `docker.io/nersc/base_cuda_mpich` repository currently only has the
-`11.8x4.2.2` tag.
 
 The build script stages the context under `/tmp` before invoking the container
 builder to avoid filesystem metadata issues from mounted project paths. It uses

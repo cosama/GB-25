@@ -6,7 +6,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 WORKDIR /opt
 ENV DEBIAN_FRONTEND=noninteractive
 
-ARG JULIA_VERSION=1.12.6
+ARG JULIA_VERSION=1.11.7
 ENV JULIA_DEPOT_PATH=/usr/local/julia_depot
 ENV JULIAUP_DEPOT_PATH=/usr/local/julia
 RUN wget -q https://install.julialang.org -O /tmp/install-juliaup.sh && \

@@ -3,7 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 container_dir="$(cd "$script_dir/.." && pwd)"
-julia_image="${JULIA_IMAGE:-docker.io/library/julia:1.12.6}"
+julia_image="${JULIA_IMAGE:-docker.io/library/julia:1.11.7}"
 podman="${PODMAN:-podman}"
 
 exec "$podman" run --rm   -v "$container_dir:/container-perlmutter:ro"   -w /container-perlmutter   "$julia_image"   julia --startup-file=no --compiled-modules=no -e '

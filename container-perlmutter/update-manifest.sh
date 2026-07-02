@@ -3,7 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
-julia_image="${JULIA_IMAGE:-docker.io/library/julia:1.12.6}"
+julia_image="${JULIA_IMAGE:-docker.io/library/julia:1.11.7}"
 julia_depot="${JULIA_DEPOT:-/tmp/gb25-perlmutter-julia-depot}"
 preferences_file="${PREFERENCES_FILE:-$script_dir/LocalPreferences.toml}"
 podman="${PODMAN:-podman}"
@@ -18,9 +18,6 @@ trap cleanup EXIT
 
 mkdir -p "$tmp_project" "$tmp_preferences_project" "$julia_depot"
 cp "$repo_root/Project.toml" "$tmp_project/Project.toml"
-if [ -f "$script_dir/Manifest.toml" ]; then
-  cp "$script_dir/Manifest.toml" "$tmp_project/Manifest.toml"
-fi
 cp "$preferences_file" "$tmp_preferences_project/LocalPreferences.toml"
 cp "$script_dir/JuliaProject.toml" "$tmp_preferences_project/JuliaProject.toml"
 
