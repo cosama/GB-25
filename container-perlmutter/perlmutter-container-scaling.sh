@@ -7,8 +7,7 @@ repo_root="$(cd "$script_dir/.." && pwd)"
 account="${ACCOUNT:-m5176}"
 queue="${QUEUE:-regular}"
 time_limit="${TIME:-01:00:00}"
-image="${IMAGE:-localhost/gb25-nersc:cuda13}"
-cuda_family="${CUDA_FAMILY:-13}"
+image="${IMAGE:-localhost/gb25-perlmutter:cuda12}"
 submit="${SUBMIT:-0}"
 gpus_per_node="${GPUS_PER_NODE:-4}"
 cpus_per_task="${CPUS_PER_TASK:-32}"
@@ -23,20 +22,8 @@ podman_hpc="${PODMAN_HPC:-podman-hpc}"
 podman_run_extra="${PODMAN_RUN_EXTRA:-}"
 srun_extra="${SRUN_EXTRA:-}"
 
-case "$cuda_family" in
-  12)
-    nccl_flag="${NCCL_FLAG:---nccl-cu12}"
-    preferences_file="$script_dir/LocalPreferences.cuda12.toml"
-    ;;
-  13)
-    nccl_flag="${NCCL_FLAG:---nccl-cu13}"
-    preferences_file="$script_dir/LocalPreferences.cuda13.toml"
-    ;;
-  *)
-    echo "CUDA_FAMILY must be 12 or 13, got '$cuda_family'." >&2
-    exit 2
-    ;;
-esac
+nccl_flag="${NCCL_FLAG:---nccl-cu12}"
+preferences_file="$script_dir/LocalPreferences.toml"
 
 if [ -z "${OUT_DIR:-}" ] && [ -z "${SCRATCH:-}" ]; then
   echo "Set OUT_DIR or SCRATCH before generating Perlmutter jobs." >&2
@@ -50,7 +37,7 @@ if [ ! -f "$run_source" ]; then
   exit 2
 fi
 if [ ! -f "$script_dir/Manifest.toml" ]; then
-  echo "Missing $script_dir/Manifest.toml. Run container-nersc/update-manifest.sh first." >&2
+  echo "Missing $script_dir/Manifest.toml. Run container-perlmutter/update-manifest.sh first." >&2
   exit 2
 fi
 
@@ -66,11 +53,12 @@ mkdir -p "$run_root"
 cp "$repo_root/Project.toml" "$run_root/Project.toml"
 cp "$script_dir/Manifest.toml" "$run_root/Manifest.toml"
 cp "$preferences_file" "$run_root/LocalPreferences.toml"
+cp "$script_dir/JuliaProject.toml" "$run_root/JuliaProject.toml"
 
 {
   printf 'repo_root = "%s"\n' "$repo_root"
   printf 'image = "%s"\n' "$image"
-  printf 'cuda_family = "%s"\n' "$cuda_family"
+  printf 'cuda_family = "12"\n'
   printf 'ngpus_list = "%s"\n' "$ngpus_list"
   printf 'grid_x = "%s"\n' "$grid_x"
   printf 'grid_y = "%s"\n' "$grid_y"
@@ -146,10 +134,10 @@ export TZ=UTC
 export JULIA_DEBUG=Reactant,Reactant_jll
 export JULIA_DEPOT_PATH=$job_dir/julia_depot:/usr/local/julia_depot
 export JULIA_PROJECT=/opt/GB-25
+export JULIA_LOAD_PATH=@:/opt/GB-25/container-perlmutter:@v#.#:@stdlib
 export JULIA_CUDA_MEMORY_POOL=none
 export JULIA_CUDA_USE_COMPAT=false
 export JULIA_CUDA_USE_BINARYBUILDER=false
-export MPICH_GPU_SUPPORT_ENABLED=1
 export FI_CXI_RDZV_GET_MIN=0
 export FI_CXI_SAFE_DEVMEM_COPY_THRESHOLD=16777216
 export NCCL_BUFFSIZE=33554432
@@ -166,10 +154,8 @@ container_cmd=(
   run
   --rm
   --gpu
-  --cuda-mpi
+  --mpi
   "$nccl_flag"
-  --net
-  host
   "\${podman_extra_args[@]}"
   -v
   "$job_dir:$job_dir"
@@ -192,13 +178,13 @@ container_cmd=(
   --env
   JULIA_PROJECT
   --env
+  JULIA_LOAD_PATH
+  --env
   JULIA_CUDA_MEMORY_POOL
   --env
   JULIA_CUDA_USE_COMPAT
   --env
   JULIA_CUDA_USE_BINARYBUILDER
-  --env
-  MPICH_GPU_SUPPORT_ENABLED
   --env
   FI_CXI_RDZV_GET_MIN
   --env

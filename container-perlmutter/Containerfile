@@ -1,0 +1,40 @@
+# syntax=docker/dockerfile:1
+ARG BASE_IMAGE=docker.io/nersc/base_gpu:26.06
+FROM ${BASE_IMAGE}
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+WORKDIR /opt
+ENV DEBIAN_FRONTEND=noninteractive
+
+ARG JULIA_VERSION=1.12.6
+ENV JULIA_DEPOT_PATH=/usr/local/julia_depot
+ENV JULIAUP_DEPOT_PATH=/usr/local/julia
+RUN wget -q https://install.julialang.org -O /tmp/install-juliaup.sh && \
+    sh /tmp/install-juliaup.sh --yes --path /usr/local/julia --default-channel ${JULIA_VERSION} && \
+    rm /tmp/install-juliaup.sh
+ENV PATH=/usr/local/julia/bin:${PATH}
+
+WORKDIR /opt/GB-25
+ENV JULIA_PROJECT=/opt/GB-25
+ENV JULIA_LOAD_PATH=@:/opt/GB-25/container-perlmutter:@v#.#:@stdlib
+ENV JULIA_CUDA_USE_BINARYBUILDER=false
+ENV JULIA_PKG_PRECOMPILE_AUTO=0
+
+ARG PERLMUTTER_LOCAL_PREFERENCES=container-perlmutter/LocalPreferences.toml
+
+COPY . ./
+
+# Materialize the locked environment only. Do not import or precompile Julia
+# packages here: compilation is architecture-sensitive and must happen on the
+# target GPU/runtime environment.
+RUN if [ "$PERLMUTTER_LOCAL_PREFERENCES" != "container-perlmutter/LocalPreferences.toml" ]; then \
+      cp "${PERLMUTTER_LOCAL_PREFERENCES}" container-perlmutter/LocalPreferences.toml; \
+    fi && \
+    cp container-perlmutter/Manifest.toml Manifest.toml && \
+    test -f Manifest.toml && \
+    test -f container-perlmutter/JuliaProject.toml && \
+    test -f container-perlmutter/LocalPreferences.toml && \
+    test -f src/GordonBell25.jl && \
+    julia --startup-file=no --compiled-modules=no -e 'using Pkg; Pkg.activate("/opt/GB-25"); Pkg.instantiate()'
+
+CMD ["julia", "--project=/opt/GB-25"]
