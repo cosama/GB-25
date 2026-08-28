@@ -8,7 +8,7 @@ queue = "regular"
 out_dir = joinpath(ENV["SCRATCH"], "GB25")
 
 # run params
-submit   = true
+submit   = false
 run_name = "r_react_"
 time     = "01:00:00"
 
@@ -17,9 +17,7 @@ time     = "01:00:00"
 # We also try to pick the those numbers which are as close as possible to powers of 2,
 # and such that the sum of all the numbers is less than 2*8192 (so they can be run simultaneously).
 # Ngpus     = [4, 8, 32, 72, 128, 288, 512, 968, 2048, 3872, 6136]
-Ngpus     = [4, 8, 32, 72, 128, 288, 512, 968, 2048, 6136]
-Ngpus     = [6136]
-Ngpus     = [4]
+Ngpus = [4, 72]
 
 type     = "weak"
 
@@ -80,7 +78,7 @@ export JULIA_CUDA_USE_COMPAT=false
 srun -n $(Nnodes) -c 32 -G $(Ngpu) --cpu-bind=verbose,cores \
     $(job_dir)/launcher.sh \
     $(Base.julia_cmd()[1]) --project=$(project_path) --compiled-modules=strict -O0 \
-    $(run_file) --grid-x $(x) --grid-y $(y) --grid-z 128
+    $(run_file) --grid-x $(x) --grid-y $(y) --grid-z 4
 """
 end
 

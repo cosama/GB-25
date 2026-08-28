@@ -20,6 +20,7 @@ using Oceananigans.Units
 using Oceananigans.Architectures: ReactantState
 using Random
 using Printf
+using CUDA
 using Reactant
 
 if !is_distributed_env_present()
@@ -132,21 +133,13 @@ profile_dir = joinpath(@__DIR__, "profiling", jobid_procid)
 mkpath(joinpath(profile_dir, "first_time_step"))
 @info "[$rank] allocations" GordonBell25.allocatorstats()
 @info "[$rank] Running first_time_step!..." now(UTC)
-Reactant.with_profiler(joinpath(profile_dir, "first_time_step")) do
-    Reactant.Profiler.annotate("bench"; metadata=Dict("step_num" => 1, "_r" => 1)) do
-        @time "[$rank] first time step" rfirst!(model)
-    end
-end
+@time "[$rank] first time step" rfirst!(model)
 @info "[$rank] allocations" GordonBell25.allocatorstats()
 
 mkpath(joinpath(profile_dir, "loop"))
 @info "[$rank] allocations" GordonBell25.allocatorstats()
 @info "[$rank] running loop" now(UTC)
-Reactant.with_profiler(joinpath(profile_dir, "loop")) do
-    Reactant.Profiler.annotate("bench"; metadata=Dict("step_num" => 1, "_r" => 1)) do
-        @time "[$rank] loop" compiled_loop!(model, Ninner)
-    end
-end
+@time "[$rank] loop" compiled_loop!(model, Ninner)
 
 let dump_path = mkpath(joinpath(model_state_dump_path, "loop1"))
     @info "[$rank] loop1 dumping state to disk" now(UTC) dump_path
@@ -157,10 +150,20 @@ end
 mkpath(joinpath(profile_dir, "loop2"))
 @info "[$rank] allocations" GordonBell25.allocatorstats()
 @info "[$rank] running second loop" now(UTC)
-Reactant.with_profiler(joinpath(profile_dir, "loop2")) do
-    Reactant.Profiler.annotate("bench"; metadata=Dict("step_num" => 1, "_r" => 1)) do
+if get(ENV, "GB25_XPROF", "false") == "true"
+    Reactant.with_profiler(joinpath(profile_dir, "loop2")) do
+        Reactant.Profiler.annotate("bench"; metadata=Dict("step_num" => 1, "_r" => 1)) do
+            @time "[$rank] second loop" compiled_loop!(model, Ninner)
+        end
+    end
+elseif get(ENV, "GB25_NSYS", "false") == "true"
+    @info "[$rank] nsys capture range: opening (cudaProfilerStart)" now(UTC)
+    CUDA.@profile external=true begin
         @time "[$rank] second loop" compiled_loop!(model, Ninner)
     end
+    @info "[$rank] nsys capture range: closed (cudaProfilerStop)" now(UTC)
+else
+    @time "[$rank] second loop" compiled_loop!(model, Ninner)
 end
 @info "[$rank] allocations" GordonBell25.allocatorstats()
 
